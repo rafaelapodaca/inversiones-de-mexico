@@ -22,7 +22,9 @@ type Solicitud = {
 export default async function BackofficeSolicitudesPage() {
   const { data } = await supabaseAdmin
     .from("solicitudes")
-    .select("id, cliente_id, tipo, monto, status, nota, folio, comprobante_url, created_at, clientes(nombre,email)")
+    .select(
+      "id, cliente_id, tipo, monto, status, nota, folio, comprobante_url, created_at, clientes(nombre,email)"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -37,13 +39,43 @@ export default async function BackofficeSolicitudesPage() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "system-ui", padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: COLORS.bg,
+        color: COLORS.text,
+        fontFamily: "system-ui",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 12,
+        }}
+      >
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950, color: COLORS.white }}>Solicitudes</h1>
-          <div style={{ marginTop: 6, color: COLORS.muted }}>Retiros / Aportaciones / Cambios / Aclaraciones</div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 950,
+              color: COLORS.white,
+            }}
+          >
+            Solicitudes
+          </h1>
+          <div style={{ marginTop: 6, color: COLORS.muted }}>
+            Retiros / Aportaciones / Cambios / Aclaraciones
+          </div>
         </div>
-        <Link href="/backoffice" style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}>
+
+        <Link
+          href="/backoffice"
+          style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}
+        >
           ← Backoffice
         </Link>
       </div>
