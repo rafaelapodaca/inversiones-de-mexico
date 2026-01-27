@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { COLORS, SHADOW } from "../../lib/theme";
 import { supabaseAdmin } from "../../lib/supabase-admin";
-import DocumentosClient from "./ui";
+import DocumentosClient from "./DocumentosClient";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +33,7 @@ export default async function BackofficeDocumentosPage() {
         estatus: r?.estatus ?? null,
         url: r?.url ?? null,
         created_at: r?.created_at ?? null,
-        clientes: r?.clientes
-          ? { nombre: r.clientes?.nombre ?? null, email: r.clientes?.email ?? null }
-          : null,
+        clientes: r?.clientes ? { nombre: r.clientes?.nombre ?? null, email: r.clientes?.email ?? null } : null,
       }))
     : [];
 

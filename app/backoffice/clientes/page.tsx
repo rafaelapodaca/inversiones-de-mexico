@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { COLORS, SHADOW } from "../../lib/theme";
 import { supabaseAdmin } from "../../lib/supabase-admin";
-import ClientesOnboardingClient from "./ui";
+import ClientesOnboardingClient from "./ClientesOnboardingClient";
 
 export const dynamic = "force-dynamic";
 

@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { COLORS, SHADOW } from "../../lib/theme";
 import { supabaseAdmin } from "../../lib/supabase-admin";
-import MovimientosCsvClient from "./ui";
+import MovimientosCsvClient from "./MovimientosCsvClient";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,9 @@ export default async function BackofficeMovimientosPage() {
           <div style={{ marginTop: 6, color: COLORS.muted }}>Aportaciones / Retiros / Comisiones / Ajustes</div>
 
           {error ? (
-            <div style={{ marginTop: 10, color: "#fca5a5", fontWeight: 800 }}>Error cargando clientes: {error.message}</div>
+            <div style={{ marginTop: 10, color: "#fca5a5", fontWeight: 800 }}>
+              Error cargando clientes: {error.message}
+            </div>
           ) : null}
         </div>
 
