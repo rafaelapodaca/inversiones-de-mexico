@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { COLORS, SHADOW } from "../../lib/theme";
 import { supabaseAdmin } from "../../lib/supabase-admin";
-import SolicitudesClient from "./ui";
+import SolicitudesClient from "./SolicitudesClient";
 
 export const dynamic = "force-dynamic";
 
@@ -57,14 +57,7 @@ export default async function BackofficeSolicitudesPage() {
         }}
       >
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 950,
-              color: COLORS.white,
-            }}
-          >
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950, color: COLORS.white }}>
             Solicitudes
           </h1>
           <div style={{ marginTop: 6, color: COLORS.muted }}>
@@ -72,10 +65,7 @@ export default async function BackofficeSolicitudesPage() {
           </div>
         </div>
 
-        <Link
-          href="/backoffice"
-          style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}
-        >
+        <Link href="/backoffice" style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}>
           ← Backoffice
         </Link>
       </div>
