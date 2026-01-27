@@ -1,62 +1,36 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "./lib/supabase/middleware";
-import { createServerClient } from "@supabase/ssr";
+cd ~/inversiones-de-mexico
 
-const PUBLIC_PATHS = [
-  "/login",
-  "/auth/callback",
-  "/_next",
-  "/favicon.ico",
-  "/robots.txt",
-  "/sitemap.xml",
-];
+cat > middleware.ts <<'EOF'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+function isPublic(pathname: string) {
+  if (pathname.startsWith("/_next")) return true;
+  if (pathname.startsWith("/favicon.ico")) return true;
+  if (pathname === "/login") return true;
+  return false;
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-  // dejar pasar assets
-  if (isPublicPath(pathname)) {
-    return updateSession(request);
-  }
+  if (isPublic(pathname)) return NextResponse.next();
 
-  // 1) mantener cookies/sesión actualizada
-  const response = await updateSession(request);
-
-  // 2) checar sesión
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
+  const hasAuthCookie = req.cookies.getAll().some((c) =>
+    c.name.includes("sb-") && c.name.includes("auth-token")
   );
 
-  const { data } = await supabase.auth.getUser();
-
-  // si no hay usuario → a login
-  if (!data.user) {
-    const url = request.nextUrl.clone();
+  if (!hasAuthCookie) {
+    const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
+    url.searchParams.set("redirect", pathname + search);
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!.*\\..*).*)"], // todo lo que no sea archivo (css/js/png)
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };
+EOF
