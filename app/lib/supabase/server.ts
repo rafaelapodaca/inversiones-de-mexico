@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +18,8 @@ export function createSupabaseServerClient() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // En Server Components a veces no permite setear cookies; es normal.
+            // En algunos contextos (Server Components) Next no permite setear cookies.
+            // Está bien: el middleware/SSR seguirá leyendo.
           }
         },
       },
