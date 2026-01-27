@@ -1,132 +1,128 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useActionState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { COLORS } from "../../lib/theme";
-import { crearDocumento, type State } from "../actions";
 
-type Cliente = { id: string; nombre: string };
-type Doc = { id: string; cliente_id: string; tipo: string; titulo: string; url: string; created_at: string };
+type Documento = {
+  id: string;
+  cliente_id: string;
+  tipo: string | null;
+  nombre: string | null;
+  estatus: string | null;
+  url: string | null;
+  created_at: string | null;
+  clientes?: { nombre: string | null; email: string | null } | null;
+};
 
-const initialState: State = { ok: false, message: "" };
+export default function DocumentosClient({ documentos }: { documentos: Documento[] }) {
+  const [q, setQ] = useState("");
 
-function Banner({ state }: { state: State }) {
-  if (!state.message) return null;
-  return (
-    <div
-      style={{
-        marginBottom: 12,
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: `1px solid ${state.ok ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
-        background: state.ok ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
-        color: state.ok ? "#86efac" : "#fca5a5",
-        fontWeight: 900,
-      }}
-    >
-      {state.message}
-    </div>
-  );
-}
-
-export default function DocumentosClient({ clientes, docs }: { clientes: Cliente[]; docs: Doc[] }) {
-  const router = useRouter();
-  const [state, action] = useActionState(crearDocumento, initialState);
-
-  useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state.ok, router]);
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return documentos;
+    return documentos.filter((d) => {
+      const hay =
+        (d.tipo || "").toLowerCase().includes(s) ||
+        (d.nombre || "").toLowerCase().includes(s) ||
+        (d.estatus || "").toLowerCase().includes(s) ||
+        (d.clientes?.nombre || "").toLowerCase().includes(s) ||
+        (d.clientes?.email || "").toLowerCase().includes(s) ||
+        (d.cliente_id || "").toLowerCase().includes(s);
+      return hay;
+    });
+  }, [documentos, q]);
 
   const input: CSSProperties = {
     width: "100%",
-    padding: 10,
+    padding: 12,
     borderRadius: 12,
     border: `1px solid ${COLORS.border}`,
     background: "rgba(255,255,255,0.06)",
-    color: "white",
+    color: COLORS.text,
     outline: "none",
   };
 
-  const btn: CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: `1px solid ${COLORS.border}`,
-    background: COLORS.primary,
-    color: "white",
-    fontWeight: 950,
-    cursor: "pointer",
+  const tag = (estatus?: string | null) => {
+    const v = (estatus || "pendiente").toLowerCase();
+    const ok = v.includes("valid") || v.includes("aprob");
+    const bad = v.includes("rech") || v.includes("fall");
+    return {
+      padding: "6px 10px",
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 900,
+      border: `1px solid ${COLORS.border}`,
+      background: ok ? "rgba(34,197,94,0.15)" : bad ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)",
+      color: ok ? "#86efac" : bad ? "#fca5a5" : "rgba(255,255,255,0.85)",
+      width: "fit-content",
+      whiteSpace: "nowrap",
+    } as CSSProperties;
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <Banner state={state} />
-
-      <form action={action} style={{ display: "grid", gap: 10, padding: 12, borderRadius: 14, border: `1px solid ${COLORS.border}`, background: "rgba(255,255,255,0.04)" }}>
-        <div style={{ fontWeight: 950, color: "white" }}>Registrar documento</div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, marginBottom: 6 }}>Admin password</div>
-            <input name="admin_pass" type="password" placeholder="********" style={input} required />
-          </div>
-
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, marginBottom: 6 }}>Cliente</div>
-            <select name="cliente_id" style={input} defaultValue="" required>
-              <option value="" disabled>Selecciona cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, marginBottom: 6 }}>Tipo</div>
-            <select name="tipo" style={input} defaultValue="" required>
-              <option value="" disabled>Selecciona tipo</option>
-              <option value="estado_cuenta">estado_cuenta</option>
-              <option value="contrato">contrato</option>
-              <option value="anexo">anexo</option>
-              <option value="comunicado">comunicado</option>
-              <option value="fiscal">fiscal</option>
-              <option value="factsheet">factsheet</option>
-              <option value="kid">kid</option>
-            </select>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, marginBottom: 6 }}>Título</div>
-            <input name="titulo" placeholder="Estado de cuenta Dic 2025" style={input} required />
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, marginBottom: 6 }}>URL</div>
-          <input name="url" placeholder="/documentos/estado-cuenta-dic-2025.pdf" style={input} required />
-          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6 }}>
-            Tip: si lo guardas en <b>public/documentos</b>, la URL es <b>/documentos/archivo.pdf</b>
-          </div>
-        </div>
-
-        <button type="submit" style={btn}>Guardar</button>
-      </form>
+    <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por tipo, estatus, cliente, email o cliente_id..." style={input} />
+        <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900 }}>{rows.length} resultados</div>
+      </div>
 
       <div style={{ display: "grid", gap: 10 }}>
-        {docs.map((d) => (
-          <div key={d.id} style={{ padding: 12, borderRadius: 14, border: `1px solid ${COLORS.border}`, background: "rgba(255,255,255,0.04)" }}>
-            <div style={{ fontWeight: 950, color: "white" }}>{d.titulo}</div>
-            <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6 }}>
-              {d.tipo} · {new Date(d.created_at).toLocaleDateString("es-MX")}
+        {rows.map((d) => (
+          <div
+            key={d.id}
+            style={{
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 14,
+              padding: 12,
+              background: "rgba(255,255,255,0.04)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 950, color: COLORS.white }}>
+                  {(d.tipo || "documento").toUpperCase()}{" "}
+                  <span style={{ color: COLORS.muted, fontWeight: 800, fontSize: 12 }}>
+                    {d.nombre ? `— ${d.nombre}` : ""}
+                  </span>
+                </div>
+
+                <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 4 }}>
+                  Cliente: {d.clientes?.nombre || "-"} {d.clientes?.email ? `— ${d.clientes.email}` : ""}
+                </div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>cliente_id: {d.cliente_id}</div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>id: {d.id}</div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                <span style={tag(d.estatus)}>{d.estatus || "pendiente"}</span>
+                {d.url ? (
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 12,
+                      border: `1px solid ${COLORS.border}`,
+                      background: "rgba(255,255,255,0.06)",
+                      color: COLORS.white,
+                      fontWeight: 900,
+                      textDecoration: "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Ver
+                  </a>
+                ) : (
+                  <span style={{ color: COLORS.muted, fontSize: 12 }}>Sin URL</span>
+                )}
+              </div>
             </div>
-            <a href={d.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, color: "white", fontWeight: 900 }}>
-              Abrir
-            </a>
           </div>
         ))}
-        {!docs.length ? <div style={{ color: COLORS.muted }}>Sin documentos.</div> : null}
+
+        {!rows.length ? <div style={{ color: COLORS.muted }}>Sin resultados.</div> : null}
       </div>
     </div>
   );

@@ -26,9 +26,10 @@ export default async function BackofficeSolicitudesPage() {
       "id, cliente_id, tipo, monto, status, nota, folio, comprobante_url, created_at, clientes(nombre,email)"
     )
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(200)
+    .returns<Solicitud[]>();
 
-  const solicitudes = (data ?? []) as Solicitud[];
+  const solicitudes: Solicitud[] = data ?? [];
 
   const card: CSSProperties = {
     padding: 16,
@@ -65,7 +66,10 @@ export default async function BackofficeSolicitudesPage() {
           </div>
         </div>
 
-        <Link href="/backoffice" style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}>
+        <Link
+          href="/backoffice"
+          style={{ color: COLORS.primary, textDecoration: "none", fontWeight: 900 }}
+        >
           ← Backoffice
         </Link>
       </div>
