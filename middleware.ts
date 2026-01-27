@@ -1,14 +1,10 @@
-cd ~/inversiones-de-mexico
-
-cat > middleware.ts <<'EOF'
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 function isPublic(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
-  if (pathname.startsWith("/favicon.ico")) return true;
+  if (pathname === "/favicon.ico") return true;
   if (pathname === "/login") return true;
-  // si tienes assets públicos extra, agrega aquí
   return false;
 }
 
@@ -17,7 +13,6 @@ export function middleware(req: NextRequest) {
 
   if (isPublic(pathname)) return NextResponse.next();
 
-  // Supabase Auth (cookies) — para SSR/middleware
   const hasAuthCookie = req.cookies.getAll().some((c) => {
     const n = c.name;
     return n.startsWith("sb-") && n.includes("auth-token");
@@ -36,4 +31,4 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image).*)"],
 };
-EOF
+
