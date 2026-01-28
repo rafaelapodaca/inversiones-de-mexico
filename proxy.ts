@@ -12,18 +12,18 @@ function isPublic(pathname: string) {
   // ✅ login público
   if (pathname === "/login") return true;
 
-  // (Opcional) archivos tipo .well-known (Chrome devtools, etc.)
+  // (Opcional) archivos tipo .well-known
   if (pathname.startsWith("/.well-known")) return true;
 
   return false;
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   if (isPublic(pathname)) return NextResponse.next();
 
-  // revisa si existe cookie de sesión (Supabase)
+  // Gate simple: si no hay cookie de Supabase, manda a login
   const hasAuthCookie = req.cookies.getAll().some((c) => {
     const n = c.name;
     return n.startsWith("sb-") && n.includes("auth-token");
@@ -40,5 +40,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // ✅ corre en todo menos assets (NOTA: /api ya lo dejamos pasar arriba)
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
