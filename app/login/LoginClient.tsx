@@ -31,12 +31,13 @@ export default function LoginClient() {
     });
 
     const j: any = await r.json().catch(() => ({}));
-    setLoading(false);
+if (!r.ok) {
+  setMsg(j?.message || "Error de login");
+  return;
+}
 
-    if (!r.ok) {
-      setMsg(j?.message || "Error de login");
-      return;
-    }
+router.push(j?.redirectTo || redirectTo);
+router.refresh();
 
     // ✅ prioridad:
     // 1) si venías con ?redirect=..., úsalo
