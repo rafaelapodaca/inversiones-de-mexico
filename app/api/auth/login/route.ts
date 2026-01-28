@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+const ADMIN_EMAILS = new Set<string>([
+  "rafael_apodaca@hotmail.com",
+  // agrega aquí otros admins si quieres
+]);
+
 export async function POST(req: Request) {
   const { email, password } = await req.json().catch(() => ({}));
 
@@ -9,11 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Faltan credenciales" }, { status: 400 });
   }
 
-  // ✅ Next 16: cookies() puede ser async
-  const cookieStore = await cookies();
-
-  // Creamos la respuesta ANTES para poder setear cookies en ella
-  const res = NextResponse.json({ ok: true });
+  const cookieStore = cookies();
+  const res = NextResponse.json({ ok: true, redirectTo: "/inicio" });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,11 +24,12 @@ export async function POST(req: Request) {
       cookies: {
         getAll() {
           return cookieStore.getAll();
+
         },
         setAll(cookiesToSet) {
-          for (const { name, value, options } of cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
             res.cookies.set(name, value, options);
-          }
+          });
         },
       },
     }
@@ -38,5 +41,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 401 });
   }
 
-  return res;
+  // ✅ Decide destino por rol (whitelist)
+  const redirectTo = ADMIN_EMAILS.has(String(email).toLowerCase()) ? "/admin" : "/inicio";
+
+  // ✅ devolver redirectTo (y mantener cookies en res)
+  return NextResponse.json({ ok: true, redirectTo }, { headers: res.headers });
 }

@@ -8,7 +8,11 @@ export default function LoginClient() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  const redirectTo = useMemo(() => sp.get("redirect") || "/inicio", [sp]);
+  // si vienes redirigido por middleware, respeta redirect
+  const redirectFromUrl = useMemo(() => sp.get("redirect") || "", [sp]);
+
+  // fallback (si no hay redirect), el backend decidirá /admin o /inicio
+  const fallbackAfterLogin = "/inicio";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,15 +30,24 @@ export default function LoginClient() {
       body: JSON.stringify({ email, password }),
     });
 
+    const j: any = await r.json().catch(() => ({}));
     setLoading(false);
 
-    const j: any = await r.json().catch(() => ({}));
     if (!r.ok) {
       setMsg(j?.message || "Error de login");
       return;
     }
 
-    router.push(redirectTo);
+    // ✅ prioridad:
+    // 1) si venías con ?redirect=..., úsalo
+    // 2) si API devuelve redirectTo, úsalo (/admin o /inicio)
+    // 3) fallback
+    const dest =
+      (redirectFromUrl && redirectFromUrl.startsWith("/") ? redirectFromUrl : "") ||
+      (typeof j?.redirectTo === "string" ? j.redirectTo : "") ||
+      fallbackAfterLogin;
+
+    router.push(dest);
     router.refresh();
   }
 
@@ -65,8 +78,23 @@ export default function LoginClient() {
       <div style={{ marginTop: 6, color: COLORS.muted }}>Inicia sesión para entrar al portal.</div>
 
       <form onSubmit={onLogin} style={{ marginTop: 14, display: "grid", gap: 10 }}>
-        <input style={input} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input style={input} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <input
+          style={input}
+          placeholder="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+
+        <input
+          style={input}
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
 
         <button style={btn} disabled={loading} type="submit">
           {loading ? "Entrando..." : "Entrar"}
