@@ -1,76 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import { COLORS } from "./lib/theme";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function HeaderClient() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  // ✅ NO mostrar header en /login (y si agregas otras rutas, ponlas aquí)
+  // ✅ NO mostrar header en /login
   const hideHeader = useMemo(() => {
     const HIDE_ON = new Set<string>(["/login"]);
     return HIDE_ON.has(pathname);
   }, [pathname]);
 
-  const [ready, setReady] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-
-      const ok = !!data.session;
-      setHasSession(ok);
-      setReady(true);
-
-      // ✅ si no hay sesión y no estás en /login -> manda a /login
-      if (!ok && pathname !== "/login") {
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-      }
-    })();
-
-    // escuchar cambios de sesión (login/logout)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      const ok = !!session;
-      setHasSession(ok);
-
-      if (!ok && pathname !== "/login") {
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      sub?.subscription?.unsubscribe();
-    };
-  }, [pathname, router]);
-
-  // ✅ si es /login no mostrar header
   if (hideHeader) return null;
 
-  // ✅ mientras valida sesión, no flashes el header
-  if (!ready) return null;
-
-  // ✅ si no hay sesión, no muestres header (igual ya redirige)
-  if (!hasSession) return null;
-
   async function onLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      startTransition(() => {
+        router.replace("/login");
+        router.refresh();
+      });
+    }
   }
 
   const bar = {
@@ -107,7 +63,8 @@ export default function HeaderClient() {
 
   const btn = {
     ...a,
-    cursor: "pointer",
+    cursor: isPending ? "not-allowed" : "pointer",
+    opacity: isPending ? 0.7 : 1,
   };
 
   return (
@@ -124,8 +81,8 @@ export default function HeaderClient() {
         </div>
 
         <div style={right}>
-          <button onClick={onLogout} style={btn}>
-            Cerrar sesión
+          <button onClick={onLogout} style={btn} disabled={isPending}>
+            {isPending ? "Cerrando..." : "Cerrar sesión"}
           </button>
         </div>
       </div>

@@ -1,14 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-import { COLORS, SHADOW } from "../lib/theme";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { COLORS } from "../lib/theme";
 
 export default function LoginClient() {
   const sp = useSearchParams();
@@ -19,44 +13,30 @@ export default function LoginClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string>("");
+  const [msg, setMsg] = useState("");
 
-  async function onLogin(e: React.FormEvent) {
+  async function onLogin(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setMsg("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const r = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
     setLoading(false);
 
-    if (error) {
-      setMsg(error.message);
+    const j: any = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setMsg(j?.message || "Error de login");
       return;
     }
 
     router.push(redirectTo);
     router.refresh();
   }
-
-  const page = {
-    minHeight: "100vh",
-    background: COLORS.bg,
-    color: COLORS.text,
-    fontFamily: "system-ui",
-    display: "grid",
-    placeItems: "center",
-    padding: 24,
-  } as const;
-
-  const card = {
-    width: "min(520px, 100%)",
-    padding: 18,
-    borderRadius: 16,
-    border: `1px solid ${COLORS.border}`,
-    background: COLORS.card,
-    boxShadow: SHADOW,
-  } as const;
 
   const input = {
     width: "100%",
@@ -80,43 +60,20 @@ export default function LoginClient() {
   } as const;
 
   return (
-    <main style={page}>
-      <section style={card}>
-        <div style={{ fontSize: 22, fontWeight: 950, color: COLORS.white }}>Acceso</div>
-        <div style={{ marginTop: 6, color: COLORS.muted }}>
-          Inicia sesión para entrar al portal.
-        </div>
+    <>
+      <div style={{ fontSize: 22, fontWeight: 950, color: COLORS.white }}>Acceso</div>
+      <div style={{ marginTop: 6, color: COLORS.muted }}>Inicia sesión para entrar al portal.</div>
 
-        <form onSubmit={onLogin} style={{ marginTop: 14, display: "grid", gap: 10 }}>
-          <input
-            style={input}
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+      <form onSubmit={onLogin} style={{ marginTop: 14, display: "grid", gap: 10 }}>
+        <input style={input} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input style={input} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-          <input
-            style={input}
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        <button style={btn} disabled={loading} type="submit">
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
 
-          <button style={btn} disabled={loading} type="submit">
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-
-          {msg ? (
-            <div style={{ marginTop: 6, color: "#fca5a5", fontWeight: 800 }}>
-              {msg}
-            </div>
-          ) : null}
-        </form>
-      </section>
-    </main>
+        {msg ? <div style={{ marginTop: 6, color: "#fca5a5", fontWeight: 800 }}>{msg}</div> : null}
+      </form>
+    </>
   );
 }
