@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export async function POST(req: Request) {
+export async function POST() {
+  const cookieStore = await cookies();
   const res = NextResponse.json({ ok: true });
 
   const supabase = createServerClient(
@@ -10,20 +12,12 @@ export async function POST(req: Request) {
     {
       cookies: {
         getAll() {
-          return req.headers.get("cookie")
-            ? req.headers
-                .get("cookie")!
-                .split(";")
-                .map((c) => {
-                  const [name, ...rest] = c.trim().split("=");
-                  return { name, value: decodeURIComponent(rest.join("=")) };
-                })
-            : [];
+          return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+          for (const { name, value, options } of cookiesToSet) {
             res.cookies.set(name, value, options);
-          });
+          }
         },
       },
     }

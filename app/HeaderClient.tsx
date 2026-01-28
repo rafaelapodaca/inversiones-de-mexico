@@ -1,32 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useTransition } from "react";
+import { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { COLORS } from "./lib/theme";
 
 export default function HeaderClient() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
-  // ✅ NO mostrar header en /login
-  const hideHeader = useMemo(() => {
-    const HIDE_ON = new Set<string>(["/login"]);
-    return HIDE_ON.has(pathname);
-  }, [pathname]);
-
+  const hideHeader = useMemo(() => pathname === "/login", [pathname]);
   if (hideHeader) return null;
 
   async function onLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      startTransition(() => {
-        router.replace("/login");
-        router.refresh();
-      });
-    }
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
   }
 
   const bar = {
@@ -61,11 +50,7 @@ export default function HeaderClient() {
     background: "rgba(255,255,255,0.05)",
   };
 
-  const btn = {
-    ...a,
-    cursor: isPending ? "not-allowed" : "pointer",
-    opacity: isPending ? 0.7 : 1,
-  };
+  const btn = { ...a, cursor: "pointer" };
 
   return (
     <div style={bar}>
@@ -81,8 +66,8 @@ export default function HeaderClient() {
         </div>
 
         <div style={right}>
-          <button onClick={onLogout} style={btn} disabled={isPending}>
-            {isPending ? "Cerrando..." : "Cerrar sesión"}
+          <button onClick={onLogout} style={btn}>
+            Cerrar sesión
           </button>
         </div>
       </div>

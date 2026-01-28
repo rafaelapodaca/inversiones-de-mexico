@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Faltan credenciales" }, { status: 400 });
   }
 
-  // ✅ En Next 16, cookies() puede ser async
+  // ✅ Next 16: cookies() puede ser async
   const cookieStore = await cookies();
 
   // Creamos la respuesta ANTES para poder setear cookies en ella
@@ -38,6 +38,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 401 });
   }
 
-  // ✅ IMPORTANTÍSIMO: devolver "res" para que viajen las cookies
   return res;
 }
