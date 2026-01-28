@@ -1,45 +1,59 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 function isPublic(pathname: string) {
-  // Next internals / assets
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
 
-  // ✅ deja pasar TODO /api (incluye /api/auth/login y /api/auth/logout)
+  // ✅ nunca proteger /api
   if (pathname.startsWith("/api")) return true;
 
   // ✅ login público
   if (pathname === "/login") return true;
 
-  // (Opcional) archivos tipo .well-known
+  // opcional
   if (pathname.startsWith("/.well-known")) return true;
 
   return false;
 }
 
-export function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   if (isPublic(pathname)) return NextResponse.next();
 
-  // Gate simple: si no hay cookie de Supabase, manda a login
-  const hasAuthCookie = req.cookies.getAll().some((c) => {
-    const n = c.name;
-    return n.startsWith("sb-") && n.includes("auth-token");
-  });
+  const res = NextResponse.next();
 
-  if (!hasAuthCookie) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  const { data } = await supabase.auth.getUser();
+
+  if (!data?.user) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname + (search || ""));
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
-  // ✅ corre en todo menos assets (NOTA: /api ya lo dejamos pasar arriba)
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
 };
