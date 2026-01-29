@@ -2,26 +2,22 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-function isPublic(pathname: string) {
-  if (pathname.startsWith("/_next")) return true;
-  if (pathname === "/favicon.ico") return true;
+const ADMIN_EMAILS = new Set([
+  "rafael_apodaca@hotmail.com",
+]);
 
-  // ✅ nunca proteger /api
-  if (pathname.startsWith("/api")) return true;
-
-  // ✅ login público
-  if (pathname === "/login") return true;
-
-  // opcional
-  if (pathname.startsWith("/.well-known")) return true;
-
-  return false;
-}
-
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  if (isPublic(pathname)) return NextResponse.next();
+  // públicos
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/login" ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next();
+  }
 
   const res = NextResponse.next();
 
@@ -30,20 +26,18 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            res.cookies.set(name, value, options);
-          });
-        },
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) =>
+          cookies.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          ),
       },
     }
   );
 
   const { data } = await supabase.auth.getUser();
 
+  // 🔒 sin sesión → login
   if (!data?.user) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
@@ -51,9 +45,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 🔐 protección ADMIN
+  if (pathname.startsWith("/admin")) {
+    const email = data.user.email?.toLowerCase() || "";
+    if (!ADMIN_EMAILS.has(email)) {
+      return NextResponse.redirect(new URL("/inicio", req.url));
+    }
+  }
+
   return res;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };
