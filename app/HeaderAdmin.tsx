@@ -48,11 +48,16 @@ export default function HeaderAdmin() {
       <div style={wrap}>
         <div style={left}>
           <Link href="/admin" style={a}>Admin</Link>
+
+          {/* ✅ NUEVO: alta/listado de clientes admin */}
+          <Link href="/admin/clientes" style={a}>Alta clientes</Link>
+
           <Link href="/backoffice" style={a}>Backoffice</Link>
           <Link href="/backoffice/clientes" style={a}>Clientes</Link>
           <Link href="/backoffice/documentos" style={a}>Documentos</Link>
           <Link href="/backoffice/movimientos" style={a}>Movimientos</Link>
           <Link href="/backoffice/solicitudes" style={a}>Solicitudes</Link>
+
           <Link href="/inicio" style={a}>Ver portal cliente</Link>
         </div>
       </div>
