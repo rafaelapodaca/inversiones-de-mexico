@@ -8,7 +8,7 @@ export default function LoginClient() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  // Si vienen de /admin, el middleware manda ?redirect=/admin
+  // Si vienen de /admin, el proxy manda ?redirect=/admin
   const redirectParam = useMemo(() => sp.get("redirect") || "/inicio", [sp]);
 
   const [email, setEmail] = useState("");
@@ -177,7 +177,7 @@ export default function LoginClient() {
 
         <div style={help}>
           <span>Acceso restringido</span>
-          <span style={{ opacity: 0.9 }}>Soporte: soporte@tudominio.com</span>
+          <span style={{ opacity: 0.9 }}>Soporte: contacto@inversionesdemexico.mx</span>
         </div>
       </form>
     </>
