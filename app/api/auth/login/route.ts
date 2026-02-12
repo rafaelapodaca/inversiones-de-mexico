@@ -6,14 +6,13 @@ import { createServerClient } from "@supabase/ssr";
 
 const ADMIN_EMAILS = new Set<string>([
   "rafael_apodaca@hotmail.com",
-  // agrega más admins aquí si quieres
 ]);
 
 function sanitizeRedirect(input: unknown): string | null {
   if (typeof input !== "string") return null;
   const r = input.trim();
   if (!r.startsWith("/")) return null;
-  if (r.startsWith("//")) return null; // evita open-redirect tipo //evil.com
+  if (r.startsWith("//")) return null;
   return r;
 }
 
@@ -25,9 +24,11 @@ export async function POST(req: Request) {
   }
 
   const emailLower = String(email).toLowerCase();
-  const cookieStore = cookies(); // ✅ SIN await
 
-  // ✅ Creamos respuesta base para que Supabase setee cookies sobre ESTE objeto
+  // ✅ En Next 16 cookies() puede ser async → await
+  const cookieStore = await cookies();
+
+  // ✅ Respuesta base donde vamos a setear cookies
   const res = NextResponse.json({ ok: true });
 
   const supabase = createServerClient(
@@ -35,13 +36,15 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        // ✅ API compatible: get(name) / set(name,value,options) / remove(...)
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            res.cookies.set(name, value, options);
-          });
+        set(name: string, value: string, options: any) {
+          res.cookies.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          res.cookies.set(name, "", { ...options, maxAge: 0 });
         },
       },
     }
@@ -59,7 +62,6 @@ export async function POST(req: Request) {
   const isAdmin = ADMIN_EMAILS.has(emailLower);
   const safeRequested = sanitizeRedirect(redirectTo);
 
-  // ✅ destino final con whitelist por rol
   let finalRedirect = isAdmin ? "/admin" : "/inicio";
 
   if (safeRequested) {
@@ -74,5 +76,6 @@ export async function POST(req: Request) {
     }
   }
 
+  // ✅ Importante: devolver headers/cookies del res original
   return NextResponse.json({ ok: true, redirectTo: finalRedirect }, { headers: res.headers });
 }
