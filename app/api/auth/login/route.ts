@@ -7,17 +7,26 @@ const ADMIN_EMAILS = new Set<string>([
   // agrega más admins aquí si quieres
 ]);
 
+function sanitizeRedirect(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const r = input.trim();
+  if (!r.startsWith("/")) return null;
+  if (r.startsWith("//")) return null; // evita open-redirect tipo //evil.com
+  return r;
+}
+
 export async function POST(req: Request) {
-  const { email, password } = await req.json().catch(() => ({}));
+  const { email, password, redirectTo } = await req.json().catch(() => ({}));
 
   if (!email || !password) {
     return NextResponse.json({ ok: false, message: "Faltan credenciales" }, { status: 400 });
   }
 
+  const emailLower = String(email).toLowerCase();
   const cookieStore = await cookies();
 
-  // ✅ Creamos respuesta ANTES para setear cookies aquí
-  const res = NextResponse.json({ ok: true, redirectTo: "/inicio" });
+  // ✅ Creamos respuesta base para que Supabase setee cookies sobre ESTE objeto
+  const res = NextResponse.json({ ok: true });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,19 +45,35 @@ export async function POST(req: Request) {
     }
   );
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email: String(email),
+    password: String(password),
+  });
 
   if (error) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 401 });
   }
 
-  // ✅ destino por “rol” (whitelist)
-  const isAdmin = ADMIN_EMAILS.has(String(email).toLowerCase());
-  const redirectTo = isAdmin ? "/admin" : "/inicio";
+  const isAdmin = ADMIN_EMAILS.has(emailLower);
+  const safeRequested = sanitizeRedirect(redirectTo);
 
-  // ✅ devolvemos EL MISMO res (para cookies) + redirectTo
-  return NextResponse.json(
-    { ok: true, redirectTo },
-    { headers: res.headers }
-  );
+  // ✅ destino final con whitelist por rol
+  let finalRedirect = isAdmin ? "/admin" : "/inicio";
+
+  if (safeRequested) {
+    if (isAdmin) {
+      // Admin SOLO aterriza en admin (o subrutas admin)
+      if (safeRequested === "/admin" || safeRequested.startsWith("/admin/")) {
+        finalRedirect = safeRequested;
+      }
+    } else {
+      // No-admin NUNCA puede ir a /admin
+      if (!(safeRequested === "/admin" || safeRequested.startsWith("/admin/"))) {
+        finalRedirect = safeRequested;
+      }
+    }
+  }
+
+  // ✅ devolvemos cookies + redirectTo
+  return NextResponse.json({ ok: true, redirectTo: finalRedirect }, { headers: res.headers });
 }

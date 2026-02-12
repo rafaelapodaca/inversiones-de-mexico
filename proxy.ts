@@ -11,13 +11,15 @@ export async function proxy(req: NextRequest) {
 
   // públicos
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname === "/login" ||
-    pathname === "/favicon.ico"
-  ) {
-    return NextResponse.next();
-  }
+  pathname.startsWith("/_next") ||
+  pathname.startsWith("/api") ||
+  pathname.startsWith("/login") ||
+  pathname.startsWith("/auth/callback") ||
+  pathname.startsWith("/.well-known") ||
+  pathname === "/favicon.ico"
+) {
+  return NextResponse.next();
+}
 
   const res = NextResponse.next();
 

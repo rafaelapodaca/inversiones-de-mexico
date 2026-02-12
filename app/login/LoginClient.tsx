@@ -1,185 +1,268 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { COLORS } from "../lib/theme";
+
+const LOGIN_ENDPOINT = "/api/auth/login";
+
+function sanitizeRedirect(raw: string | null): string | null {
+  if (!raw) return null;
+  const r = raw.trim();
+  if (!r.startsWith("/")) return null;
+  if (r.startsWith("//")) return null;
+  return r;
+}
 
 export default function LoginClient() {
-  const sp = useSearchParams();
   const router = useRouter();
+  const sp = useSearchParams();
 
-  // Si vienen de /admin, el proxy manda ?redirect=/admin
-  const redirectParam = useMemo(() => sp.get("redirect") || "/inicio", [sp]);
+  const requestedRedirect = useMemo(() => sanitizeRedirect(sp.get("redirect")), [sp]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  async function onLogin(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (loading) return;
+    setError(null);
 
-    setLoading(true);
-    setMsg("");
-
-    const r = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const j: any = await r.json().catch(() => ({}));
-    setLoading(false);
-
-    if (!r.ok) {
-      setMsg(j?.message || "No se pudo iniciar sesión");
+    if (!email.trim() || !password) {
+      setError("Ingresa tu correo y tu contraseña.");
       return;
     }
 
-    // ✅ prioridad: lo que diga el API (admin vs cliente)
-    const dest = j?.redirectTo || redirectParam;
-    router.push(dest);
-    router.refresh();
+    setLoading(true);
+    try {
+      const res = await fetch(LOGIN_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          remember,
+          redirectTo: requestedRedirect, // el server lo sanitiza y decide
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        setError(data?.message || "No se pudo iniciar sesión.");
+        return;
+      }
+
+      const dest = sanitizeRedirect(data?.redirectTo) || "/inicio";
+      router.replace(dest); // mejor que push (evita volver a login con back)
+      router.refresh();
+    } catch {
+      setError("Error de red. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const brandRow = {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 18,
-  } as const;
+  // --- estilos (mockup) ---
+  const label: CSSProperties = {
+    fontSize: 18,
+    fontWeight: 750,
+    color: "#1c2a3a",
+    marginBottom: 8,
+  };
 
-  const badge = {
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: 0.7,
-    padding: "8px 10px",
-    borderRadius: 999,
-    border: `1px solid ${COLORS.border}`,
-    background: "rgba(255,255,255,0.04)",
-    color: COLORS.muted,
-    textTransform: "uppercase" as const,
-    whiteSpace: "nowrap" as const,
-  } as const;
-
-  const title = {
-    fontSize: 24,
-    fontWeight: 950,
-    color: COLORS.white,
-    lineHeight: 1.1,
-  } as const;
-
-  const subtitle = {
-    marginTop: 6,
-    color: COLORS.muted,
-    fontSize: 14,
-    lineHeight: 1.5,
-  } as const;
-
-  const label = {
-    fontSize: 12,
-    color: COLORS.muted,
-    fontWeight: 800,
-    marginBottom: 6,
-  } as const;
-
-  const input = {
-    width: "100%",
-    padding: 12,
+  const fieldWrap: CSSProperties = {
+    position: "relative",
+    height: 48,
     borderRadius: 14,
-    border: `1px solid ${COLORS.border}`,
-    background: "rgba(0,0,0,0.20)",
-    color: COLORS.white,
+    border: "1px solid #D6DDE7",
+    background: "#F6F8FB",
+    display: "flex",
+    alignItems: "center",
+    paddingLeft: 44,
+    paddingRight: 12,
+  };
+
+  const icon: CSSProperties = {
+    position: "absolute",
+    left: 14,
+    top: "50%",
+    transform: "translateY(-50%)",
+    opacity: 0.65,
+  };
+
+  const input: CSSProperties = {
+    width: "100%",
+    border: "none",
     outline: "none",
-  } as const;
+    background: "transparent",
+    fontSize: 16,
+    color: "#0f2236",
+  };
 
-  const btn = {
-    width: "100%",
-    padding: 12,
-    borderRadius: 14,
-    border: `1px solid rgba(31,106,225,0.35)`,
-    background: `linear-gradient(180deg, rgba(31,106,225,0.95), rgba(31,106,225,0.78))`,
-    color: COLORS.white,
-    fontWeight: 950,
-    cursor: loading ? "not-allowed" : "pointer",
-    opacity: loading ? 0.75 : 1,
-    boxShadow: "0 14px 30px rgba(31,106,225,0.18)",
-  } as const;
+  const showBtn: CSSProperties = {
+    position: "absolute",
+    right: 12,
+    top: "50%",
+    transform: "translateY(-50%)",
+    border: "none",
+    background: "transparent",
+    color: "#1E64F0",
+    fontWeight: 750,
+    cursor: "pointer",
+  };
 
-  const help = {
-    marginTop: 12,
+  const checkboxRow: CSSProperties = {
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
     gap: 10,
-    color: COLORS.muted,
-    fontSize: 12,
-  } as const;
+    marginTop: 6,
+  };
 
-  const divider = {
-    marginTop: 16,
-    height: 1,
-    background: `linear-gradient(90deg, transparent, ${COLORS.border}, transparent)`,
-  } as const;
+  const submit: CSSProperties = {
+    marginTop: 14,
+    width: "100%",
+    height: 50,
+    borderRadius: 14,
+    border: "1px solid rgba(0,0,0,0.06)",
+    background: "linear-gradient(180deg, #2A6AF3, #1E56D8)",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow: "0 14px 30px rgba(30, 100, 240, 0.25)",
+    opacity: loading ? 0.85 : 1,
+  };
+
+  const helpLink: CSSProperties = {
+    marginTop: 12,
+    display: "inline-block",
+    color: "#1E64F0",
+    fontWeight: 700,
+    textDecoration: "underline",
+  };
+
+  const helpText: CSSProperties = {
+    marginTop: 8,
+    color: "#5b6b7c",
+    lineHeight: 1.4,
+  };
+
+  const errorBox: CSSProperties = {
+    marginTop: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(220, 38, 38, 0.25)",
+    background: "rgba(220, 38, 38, 0.07)",
+    color: "#7f1d1d",
+    fontWeight: 650,
+  };
 
   return (
-    <>
-      <div style={brandRow}>
-        <div>
-          <div style={title}>Acceso</div>
-          <div style={subtitle}>Portal privado de clientes y administración.</div>
-        </div>
-        <div style={badge}>Fintech Premium</div>
-      </div>
+    <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gap: 10 }}>
+        <div style={label}>Correo electrónico</div>
+        <div style={fieldWrap}>
+          <span style={icon} aria-hidden="true">
+            {/* Email icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 6.5h16c.8 0 1.5.7 1.5 1.5v9c0 .8-.7 1.5-1.5 1.5H4c-.8 0-1.5-.7-1.5-1.5V8c0-.8.7-1.5 1.5-1.5Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                opacity="0.9"
+              />
+              <path
+                d="m4.5 8.2 7.2 5.2c.2.1.4.2.6.2s.4-.1.6-.2l7.2-5.2"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                opacity="0.9"
+              />
+            </svg>
+          </span>
 
-      <form onSubmit={onLogin} style={{ display: "grid", gap: 12 }}>
-        <div>
-          <div style={label}>Correo</div>
           <input
             style={input}
-            placeholder="tucorreo@dominio.com"
             type="email"
-            inputMode="email"
-            autoComplete="email"
-            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            placeholder="Tu correo electrónico"
+            autoComplete="email"
+            inputMode="email"
+            aria-label="Correo electrónico"
           />
         </div>
+      </div>
 
-        <div>
-          <div style={label}>Clave de acceso</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        <div style={label}>Clave de acceso</div>
+        <div style={fieldWrap}>
+          <span style={icon} aria-hidden="true">
+            {/* Lock icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M7.5 10.5V8.8a4.5 4.5 0 0 1 9 0v1.7"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                opacity="0.9"
+              />
+              <path
+                d="M7.2 10.5h9.6c.9 0 1.7.8 1.7 1.7v6.2c0 .9-.8 1.7-1.7 1.7H7.2c-.9 0-1.7-.8-1.7-1.7v-6.2c0-.9.8-1.7 1.7-1.7Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                opacity="0.9"
+              />
+            </svg>
+          </span>
+
           <input
-            style={input}
-            placeholder="••••••••••••"
-            type="password"
-            autoComplete="current-password"
+            style={{ ...input, paddingRight: 76 }}
+            type={showPass ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
+            placeholder="Tu contraseña"
+            autoComplete="current-password"
+            aria-label="Contraseña"
           />
+
+          <button
+            type="button"
+            onClick={() => setShowPass((v) => !v)}
+            style={showBtn}
+            aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+          >
+            {showPass ? "Ocultar" : "Mostrar"}
+          </button>
         </div>
+      </div>
 
-        <button style={btn} disabled={loading} type="submit">
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
+      <label style={checkboxRow}>
+        <input
+          type="checkbox"
+          checked={remember}
+          onChange={(e) => setRemember(e.target.checked)}
+          style={{ width: 20, height: 20, accentColor: "#1E64F0" }}
+        />
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#1c2a3a" }}>
+          Recordarme
+        </span>
+      </label>
 
-        {msg ? (
-          <div style={{ color: "#fca5a5", fontWeight: 900, fontSize: 13 }}>
-            {msg}
-          </div>
-        ) : null}
+      <button type="submit" style={submit} disabled={loading}>
+        {loading ? "Iniciando…" : "Iniciar sesión"}
+      </button>
 
-        <div style={divider} />
+      <a href="/soporte" style={helpLink}>
+        ¿Olvidaste tu contraseña?
+      </a>
+      <div style={helpText}>Contacta a tu asesor o al área administrativa.</div>
 
-        <div style={help}>
-          <span>Acceso restringido</span>
-          <span style={{ opacity: 0.9 }}>Soporte: contacto@inversionesdemexico.mx</span>
-        </div>
-      </form>
-    </>
+      {error ? <div style={errorBox}>{error}</div> : null}
+    </form>
   );
 }
