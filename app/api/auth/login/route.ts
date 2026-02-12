@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const emailLower = String(email).toLowerCase();
-  const cookieStore = await cookies();
+  const cookieStore = cookies(); // ✅ SIN await
 
   // ✅ Creamos respuesta base para que Supabase setee cookies sobre ESTE objeto
   const res = NextResponse.json({ ok: true });
@@ -62,18 +64,15 @@ export async function POST(req: Request) {
 
   if (safeRequested) {
     if (isAdmin) {
-      // Admin SOLO aterriza en admin (o subrutas admin)
       if (safeRequested === "/admin" || safeRequested.startsWith("/admin/")) {
         finalRedirect = safeRequested;
       }
     } else {
-      // No-admin NUNCA puede ir a /admin
       if (!(safeRequested === "/admin" || safeRequested.startsWith("/admin/"))) {
         finalRedirect = safeRequested;
       }
     }
   }
 
-  // ✅ devolvemos cookies + redirectTo
   return NextResponse.json({ ok: true, redirectTo: finalRedirect }, { headers: res.headers });
 }
